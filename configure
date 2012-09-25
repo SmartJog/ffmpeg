@@ -177,6 +177,7 @@ Individual component options:
 External library support:
   --enable-avisynth        enable reading of AVISynth script files [no]
   --enable-bzlib           enable bzlib [autodetect]
+  --enable-libexpat        enable libexpat [autodetect]
   --enable-fontconfig      enable fontconfig
   --enable-frei0r          enable frei0r video filtering
   --enable-gnutls          enable gnutls [no]
@@ -1138,6 +1139,7 @@ CONFIG_LIST="
     libcdio
     libcelt
     libdc1394
+    libexpat
     libfaac
     libfdk_aac
     libflite
@@ -1838,6 +1840,7 @@ dtshd_demuxer_select="dca_parser"
 eac3_demuxer_select="ac3_parser"
 f4v_muxer_select="mov_muxer"
 flac_demuxer_select="flac_parser"
+hds_demuxer_select="libexpat"
 ipod_muxer_select="mov_muxer"
 libnut_demuxer_deps="libnut"
 libnut_muxer_deps="libnut"
@@ -3609,6 +3612,7 @@ check_header windows.h
 check_header X11/extensions/XvMClib.h
 check_header asm/types.h
 
+disabled libexpat || check_lib expat.h XML_ExpatVersion -lexpat || disable libexpat
 disabled  zlib || check_lib   zlib.h      zlibVersion -lz   || disable  zlib
 disabled bzlib || check_lib2 bzlib.h BZ2_bzlibVersion -lbz2 || disable bzlib
 
@@ -4095,6 +4099,7 @@ echo "libcaca enabled           ${libcaca-no}"
 echo "libcdio support           ${libcdio-no}"
 echo "libcelt enabled           ${libcelt-no}"
 echo "libdc1394 support         ${libdc1394-no}"
+echo "libexpat enabled          ${libexpat-no}"
 echo "libfaac enabled           ${libfaac-no}"
 echo "libfdk-aac enabled        ${libfdk_aac-no}"
 echo "libgsm enabled            ${libgsm-no}"

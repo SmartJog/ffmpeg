@@ -123,6 +123,7 @@ OBJS-$(CONFIG_H263_DEMUXER)              += h263dec.o rawdec.o
 OBJS-$(CONFIG_H263_MUXER)                += rawenc.o
 OBJS-$(CONFIG_H264_DEMUXER)              += h264dec.o rawdec.o
 OBJS-$(CONFIG_H264_MUXER)                += rawenc.o
+OBJS-$(CONFIG_HDS_DEMUXER)               += hdsdec.o
 OBJS-$(CONFIG_HLS_DEMUXER)               += hls.o
 OBJS-$(CONFIG_ICO_DEMUXER)               += icodec.o
 OBJS-$(CONFIG_ICO_MUXER)                 += icoenc.o
