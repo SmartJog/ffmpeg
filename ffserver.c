@@ -308,7 +308,7 @@ static int rtp_new_av_stream(HTTPContext *c,
 
 static const char *my_program_name;
 
-static const char *config_filename = "/etc/ffserver.conf";
+static const char *config_filename;
 
 static int ffserver_debug;
 static int no_launch;
@@ -4722,6 +4722,9 @@ int main(int argc, char **argv)
 
     parse_options(NULL, argc, argv, options, NULL);
 
+    if (!config_filename)
+        config_filename = av_strdup("/etc/ffserver.conf");
+
     unsetenv("http_proxy");             /* Kill the http_proxy */
 
     av_lfg_init(&random_state, av_get_random_seed());
@@ -4734,6 +4737,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "Incorrect config file - exiting.\n");
         exit(1);
     }
+    av_freep(&config_filename);
 
     /* open log file if needed */
     if (logfilename[0] != '\0') {
