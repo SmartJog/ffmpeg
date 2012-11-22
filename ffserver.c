@@ -265,6 +265,8 @@ typedef struct FeedData {
     float avg_frame_size;   /* frame size averaged over last frames with exponential mean */
 } FeedData;
 
+static struct pollfd *poll_table;
+
 static struct sockaddr_in my_http_addr;
 static struct sockaddr_in my_rtsp_addr;
 
@@ -634,7 +636,7 @@ static int http_server(void)
 {
     int server_fd = 0, rtsp_server_fd = 0;
     int ret, delay, delay1;
-    struct pollfd *poll_table, *poll_entry;
+    struct pollfd *poll_entry;
     HTTPContext *c, *c_next;
 
     if(!(poll_table = av_mallocz((nb_max_http_connections + 2)*sizeof(*poll_table)))) {
@@ -1306,6 +1308,8 @@ static void parse_acl_row(FFStream *stream, FFStream* feed, IPAddressACL *ext_ac
     char arg[1024];
     IPAddressACL acl;
     int errors = 0;
+
+    av_log(0,0,"%s:%d: parse acl row for stream=%p feed=%p\n", filename, line_num, stream, feed);
 
     get_arg(arg, sizeof(arg), &p);
     if (av_strcasecmp(arg, "allow") == 0)
@@ -4661,6 +4665,17 @@ static int parse_ffconfig(const char *filename)
         return 0;
 }
 
+static void free_child_cmd_args(FFStream *feed)
+{
+    int i;
+
+    if (!feed->child_argv)
+        return;
+    for (i = 0; feed->child_argv[i]; i++)
+        av_freep(&feed->child_argv[i]);
+    av_freep(&feed->child_argv);
+}
+
 static void handle_child_exit(int sig)
 {
     pid_t pid;
@@ -4678,7 +4693,7 @@ static void handle_child_exit(int sig)
 
                 if (uptime < 30)
                     /* Turn off any more restarts */
-                    feed->child_argv = 0;
+                    free_child_cmd_args(feed);
             }
         }
     }
@@ -4708,9 +4723,61 @@ static const OptionDef options[] = {
     { NULL },
 };
 
+static void exit_program(void)
+{
+    int i;
+    FFStream *stream;
+
+    av_log(0,0,"======= EXIT =======\n");
+
+    while (first_http_ctx)
+        close_connection(first_http_ctx);
+
+    stream = first_stream;
+    while (stream) {
+        FFStream *next = stream->next;
+
+        static const char *stream_types[] = {"live", "status", "redirect"};
+        av_log(0,0,"stream %p: type=%s feed=%p is_feed=%d nb_streams=%d\n",
+               stream, stream_types[stream->stream_type],
+               stream->feed, stream->is_feed, stream->nb_streams);
+
+        if (stream->is_feed)
+            free_acl_list(stream->acl);
+
+        for (i = 0; i < stream->nb_streams; i++) {
+            AVStream *fst = stream->streams[i];
+
+            av_log(0,0,"  stream->streams[%d]=%p (AVStream)\n", i, fst);
+            if (!stream->is_feed && fst->codec) {
+                //av_freep(&fst->codec->extradata);
+                //avcodec_close(fst->codec);
+                av_freep(&fst->codec);
+            }
+            av_free(fst->priv_data);
+            av_free(fst);
+        }
+        av_free(stream);
+        stream = next;
+    }
+
+    av_freep(&config_filename);
+    av_freep(&poll_table);
+}
+
+static void sig(int sig)
+{
+    exit(sig);
+}
+
 int main(int argc, char **argv)
 {
     struct sigaction sigact = { { 0 } };
+
+    atexit(exit_program);
+    signal(SIGQUIT, sig);
+    signal(SIGINT,  sig);
+    signal(SIGTERM, sig);
 
     parse_loglevel(argc, argv, options);
     av_register_all();
@@ -4737,7 +4804,6 @@ int main(int argc, char **argv)
         fprintf(stderr, "Incorrect config file - exiting.\n");
         exit(1);
     }
-    av_freep(&config_filename);
 
     /* open log file if needed */
     if (logfilename[0] != '\0') {
